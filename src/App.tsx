@@ -59,32 +59,36 @@ function SafeImage({
   );
 }
 
-// LINKS DO HOTMART (URLs diretas para garantir captura de IC e redirecionamento na mesma guia)
-const HOTMART_LINK_BASIC = "https://pay.hotmart.com/C106096630V";
-const HOTMART_LINK_COMPLETE = "https://pay.hotmart.com/J106610959I";
+// LINKS DO HOTMART (URLs diretas com checkoutMode=10 para layout completo com banners)
+const HOTMART_LINK_BASIC = "https://pay.hotmart.com/C106096630V?checkoutMode=10";
+const HOTMART_LINK_COMPLETE = "https://pay.hotmart.com/J106610959I?checkoutMode=10";
 
 export default function App() {
   const [basicCheckoutUrl, setBasicCheckoutUrl] = useState(HOTMART_LINK_BASIC);
   const [completeCheckoutUrl, setCompleteCheckoutUrl] = useState(HOTMART_LINK_COMPLETE);
   const [activeModal, setActiveModal] = useState<"privacidade" | "termos" | "contacto" | null>(null);
 
+  const appendUtms = (baseUrl: string) => {
+    if (typeof window === "undefined") return baseUrl;
+    try {
+      const targetUrl = new URL(baseUrl);
+      // Garante que checkoutMode=10 permanece presente
+      if (!targetUrl.searchParams.has("checkoutMode")) {
+        targetUrl.searchParams.set("checkoutMode", "10");
+      }
+
+      const urlParams = new URLSearchParams(window.location.search);
+      urlParams.forEach((value, key) => {
+        targetUrl.searchParams.set(key, value);
+      });
+      return targetUrl.toString();
+    } catch (e) {
+      return baseUrl;
+    }
+  };
+
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const appendUtms = (baseUrl: string) => {
-        try {
-          const urlParams = new URLSearchParams(window.location.search);
-          if (urlParams.toString() === "") return baseUrl;
-
-          const targetUrl = new URL(baseUrl);
-          urlParams.forEach((value, key) => {
-            targetUrl.searchParams.set(key, value);
-          });
-          return targetUrl.toString();
-        } catch (e) {
-          return baseUrl;
-        }
-      };
-
       setBasicCheckoutUrl(appendUtms(HOTMART_LINK_BASIC));
       setCompleteCheckoutUrl(appendUtms(HOTMART_LINK_COMPLETE));
     }
@@ -92,11 +96,14 @@ export default function App() {
 
   const handleCheckoutClick = (
     e: React.MouseEvent<HTMLAnchorElement>,
-    url: string,
+    baseUrl: string,
     planName: string,
     price: number
   ) => {
     if (typeof window !== "undefined") {
+      // Garante que a URL final contém todas as UTMs do momento e o checkoutMode=10
+      const finalUrl = appendUtms(baseUrl);
+
       // Disparar evento InitiateCheckout (IC) nos píxeis de rastreio (UTMify, Meta Pixel, Google Analytics)
       try {
         if (typeof (window as any).utmify === "function") {
@@ -112,10 +119,10 @@ export default function App() {
         // Ignora erros genéricos de script
       }
 
-      // Redirecionamento garantido na MESMA GUIA (mesma janela)
-      if (url) {
+      // Redirecionamento na MESMA GUIA (mesma janela)
+      if (finalUrl) {
         e.preventDefault();
-        window.location.href = url;
+        window.location.href = finalUrl;
       }
     }
   };
