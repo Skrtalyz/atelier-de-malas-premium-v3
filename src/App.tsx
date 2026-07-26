@@ -90,7 +90,12 @@ export default function App() {
     }
   }, []);
 
-  const handleCheckoutClick = (planName: string, price: number) => {
+  const handleCheckoutClick = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    url: string,
+    planName: string,
+    price: number
+  ) => {
     if (typeof window !== "undefined") {
       // Disparar evento InitiateCheckout (IC) nos píxeis de rastreio (UTMify, Meta Pixel, Google Analytics)
       try {
@@ -105,6 +110,12 @@ export default function App() {
         }
       } catch (e) {
         // Ignora erros genéricos de script
+      }
+
+      // Redirecionamento garantido na MESMA GUIA (mesma janela)
+      if (url) {
+        e.preventDefault();
+        window.location.href = url;
       }
     }
   };
@@ -150,7 +161,7 @@ export default function App() {
           <div className="max-w-[340px] sm:max-w-[370px] mx-auto mb-5 shadow-[0_20px_50px_-10px_rgba(0,0,0,0.15)] rounded-2xl border-2 border-[#C5A059]/40 overflow-hidden bg-black">
             <div style={{ padding: "177.78% 0 0 0", position: "relative" }}>
               <iframe 
-                src="https://player.vimeo.com/video/1209374084?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" 
+                src="https://player.vimeo.com/video/1209374084?autoplay=1&amp;muted=1&amp;autopause=0&amp;player_id=0&amp;app_id=58479" 
                 frameBorder="0" 
                 allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" 
                 referrerPolicy="strict-origin-when-cross-origin" 
@@ -880,7 +891,7 @@ export default function App() {
                 <a 
                   href={basicCheckoutUrl} 
                   target="_self"
-                  onClick={() => handleCheckoutClick('Plano Básico', 7.90)}
+                  onClick={(e) => handleCheckoutClick(e, basicCheckoutUrl, 'Plano Básico', 7.90)}
                   className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white px-6 py-4 text-sm sm:text-base font-black uppercase tracking-wider transition-all duration-300 shadow-md cursor-pointer"
                   id="btn-plano-basico"
                 >
@@ -944,7 +955,7 @@ export default function App() {
                 <a 
                   href={completeCheckoutUrl} 
                   target="_self"
-                  onClick={() => handleCheckoutClick('Plano Completo', 14.90)}
+                  onClick={(e) => handleCheckoutClick(e, completeCheckoutUrl, 'Plano Completo', 14.90)}
                   className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#28a745] hover:bg-[#218838] text-white px-6 py-4 text-sm sm:text-base font-black uppercase tracking-wider transition-all duration-300 shadow-md shadow-emerald-950/30 cursor-pointer"
                   id="btn-plano-completo"
                 >
