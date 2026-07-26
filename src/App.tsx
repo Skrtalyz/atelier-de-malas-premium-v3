@@ -68,17 +68,40 @@ export default function App() {
   const [completeCheckoutUrl, setCompleteCheckoutUrl] = useState(HOTMART_LINK_COMPLETE);
   const [activeModal, setActiveModal] = useState<"privacidade" | "termos" | "contacto" | null>(null);
 
+  const getCapturedUtms = (): URLSearchParams => {
+    const currentParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+    
+    // Se a URL atual tem parâmetros (ex: utm_source, utm_medium, src, etc), guarda no storage
+    if (typeof window !== "undefined" && currentParams.toString().length > 0) {
+      try {
+        sessionStorage.setItem("captured_utms", currentParams.toString());
+        localStorage.setItem("captured_utms", currentParams.toString());
+      } catch (e) {}
+      return currentParams;
+    }
+
+    // Se a URL atual NÃO tem parâmetros, recupera as UTMs guardadas anteriormente
+    if (typeof window !== "undefined") {
+      try {
+        const saved = sessionStorage.getItem("captured_utms") || localStorage.getItem("captured_utms");
+        if (saved) {
+          return new URLSearchParams(saved);
+        }
+      } catch (e) {}
+    }
+
+    return currentParams;
+  };
+
   const appendUtms = (baseUrl: string) => {
     if (typeof window === "undefined") return baseUrl;
     try {
       const targetUrl = new URL(baseUrl);
-      // Garante que checkoutMode=10 permanece presente
-      if (!targetUrl.searchParams.has("checkoutMode")) {
-        targetUrl.searchParams.set("checkoutMode", "10");
-      }
+      // Garante que checkoutMode=10 permanece presente para manter os banners
+      targetUrl.searchParams.set("checkoutMode", "10");
 
-      const urlParams = new URLSearchParams(window.location.search);
-      urlParams.forEach((value, key) => {
+      const utmParams = getCapturedUtms();
+      utmParams.forEach((value, key) => {
         targetUrl.searchParams.set(key, value);
       });
       return targetUrl.toString();
