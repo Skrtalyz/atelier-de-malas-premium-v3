@@ -115,6 +115,8 @@ export default function App() {
   }, []);
 
   const handleCheckoutClick = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    baseUrl: string,
     planName: string,
     price: number
   ) => {
@@ -132,6 +134,21 @@ export default function App() {
         }
       } catch (e) {
         // Ignora erros genéricos de script
+      }
+
+      // Calcula a URL com todas as UTMs atuais
+      const finalUrl = appendUtms(baseUrl);
+
+      // Redireciona a janela principal (rompendo iframe)
+      e.preventDefault();
+      try {
+        if (window.self !== window.top) {
+          window.top!.location.href = finalUrl;
+        } else {
+          window.location.href = finalUrl;
+        }
+      } catch (err) {
+        window.location.href = finalUrl;
       }
     }
   };
@@ -906,8 +923,8 @@ export default function App() {
               <div>
                 <a 
                   href={basicCheckoutUrl} 
-                  target="_self"
-                  onClick={() => handleCheckoutClick('Plano Básico', 7.90)}
+                  target="_top"
+                  onClick={(e) => handleCheckoutClick(e, HOTMART_LINK_BASIC, 'Plano Básico', 7.90)}
                   className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white px-6 py-4 text-sm sm:text-base font-black uppercase tracking-wider transition-all duration-300 shadow-md cursor-pointer"
                   id="btn-plano-basico"
                 >
@@ -970,8 +987,8 @@ export default function App() {
               <div>
                 <a 
                   href={completeCheckoutUrl} 
-                  target="_self"
-                  onClick={() => handleCheckoutClick('Plano Completo', 14.90)}
+                  target="_top"
+                  onClick={(e) => handleCheckoutClick(e, HOTMART_LINK_COMPLETE, 'Plano Completo', 14.90)}
                   className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#28a745] hover:bg-[#218838] text-white px-6 py-4 text-sm sm:text-base font-black uppercase tracking-wider transition-all duration-300 shadow-md shadow-emerald-950/30 cursor-pointer"
                   id="btn-plano-completo"
                 >
