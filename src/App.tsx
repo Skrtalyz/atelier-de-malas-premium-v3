@@ -75,9 +75,7 @@ export default function App() {
         const cleanSearch = searchStr.startsWith("?") ? searchStr : "?" + searchStr;
         const params = new URLSearchParams(cleanSearch);
         params.forEach((val, key) => {
-          if (val && val.length > 0) {
-            combined.set(key, val);
-          }
+          combined.set(key, val);
         });
       } catch (e) {}
     };
@@ -101,7 +99,7 @@ export default function App() {
         }
       } catch (e) {}
 
-      // 4. Tentar document.referrer (caso a página venha de redirecionamento ou iframe)
+      // 4. Tentar document.referrer
       if (document.referrer) {
         try {
           const refUrl = new URL(document.referrer);
@@ -162,6 +160,10 @@ export default function App() {
     planName: string,
     price: number
   ) => {
+    // Garante que o atributo href do link tem a URL mais recente com todas as UTMs
+    const finalUrl = appendUtms(baseUrl);
+    e.currentTarget.href = finalUrl;
+
     if (typeof window !== "undefined") {
       // Disparar evento InitiateCheckout (IC) nos píxeis de rastreio (UTMify, Meta Pixel, Google Analytics)
       try {
@@ -174,23 +176,8 @@ export default function App() {
         if (typeof (window as any).gtag === "function") {
           (window as any).gtag("event", "begin_checkout", { items: [{ item_name: planName, price: price }], value: price, currency: "EUR" });
         }
-      } catch (e) {
-        // Ignora erros genéricos de script
-      }
-
-      // Calcula a URL com todas as UTMs atuais
-      const finalUrl = appendUtms(baseUrl);
-
-      // Redireciona a janela principal (rompendo iframe)
-      e.preventDefault();
-      try {
-        if (window.self !== window.top) {
-          window.top!.location.href = finalUrl;
-        } else {
-          window.location.href = finalUrl;
-        }
       } catch (err) {
-        window.location.href = finalUrl;
+        // Ignora erros de script de terceiros
       }
     }
   };
