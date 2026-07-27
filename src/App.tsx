@@ -66,37 +66,74 @@ const HOTMART_LINK_COMPLETE = "https://pay.hotmart.com/J106610959I?checkoutMode=
 export default function App() {
   const [activeModal, setActiveModal] = useState<"privacidade" | "termos" | "contacto" | null>(null);
 
+  const getAllUtms = (): URLSearchParams => {
+    const combined = new URLSearchParams();
+
+    const addFromSearchStr = (searchStr: string) => {
+      if (!searchStr) return;
+      try {
+        const cleanSearch = searchStr.startsWith("?") ? searchStr : "?" + searchStr;
+        const params = new URLSearchParams(cleanSearch);
+        params.forEach((val, key) => {
+          if (val && val.length > 0) {
+            combined.set(key, val);
+          }
+        });
+      } catch (e) {}
+    };
+
+    if (typeof window !== "undefined") {
+      // 1. Tentar os parâmetros guardados no storage
+      try {
+        const saved = sessionStorage.getItem("captured_utms") || localStorage.getItem("captured_utms");
+        if (saved) addFromSearchStr(saved);
+      } catch (e) {}
+
+      // 2. Tentar window.location.search
+      if (window.location && window.location.search) {
+        addFromSearchStr(window.location.search);
+      }
+
+      // 3. Tentar window.top.location.search (se acessível)
+      try {
+        if (window.top && window.top.location && window.top.location.search) {
+          addFromSearchStr(window.top.location.search);
+        }
+      } catch (e) {}
+
+      // 4. Tentar document.referrer (caso a página venha de redirecionamento ou iframe)
+      if (document.referrer) {
+        try {
+          const refUrl = new URL(document.referrer);
+          if (refUrl.search) {
+            addFromSearchStr(refUrl.search);
+          }
+        } catch (e) {}
+      }
+
+      // Persistir de volta no storage
+      if (combined.toString().length > 0) {
+        try {
+          sessionStorage.setItem("captured_utms", combined.toString());
+          localStorage.setItem("captured_utms", combined.toString());
+        } catch (e) {}
+      }
+    }
+
+    return combined;
+  };
+
   const appendUtms = (baseUrl: string) => {
     if (typeof window === "undefined") return baseUrl;
     try {
       const targetUrl = new URL(baseUrl);
-      // Garante que checkoutMode=10 permanece presente para manter os banners
+      // Garante que checkoutMode=10 permanece presente para manter os banners do Hotmart
       targetUrl.searchParams.set("checkoutMode", "10");
 
-      // Extrai todos os parâmetros da URL atual (window.location.search)
-      const currentSearch = window.location.search;
-      if (currentSearch && currentSearch.length > 1) {
-        const searchParams = new URLSearchParams(currentSearch);
-        searchParams.forEach((value, key) => {
-          targetUrl.searchParams.set(key, value);
-        });
-        // Guarda no storage para persistência
-        try {
-          sessionStorage.setItem("captured_utms", searchParams.toString());
-          localStorage.setItem("captured_utms", searchParams.toString());
-        } catch (e) {}
-      } else {
-        // Fallback para UTMs capturadas previamente se window.location.search estiver vazio
-        try {
-          const saved = sessionStorage.getItem("captured_utms") || localStorage.getItem("captured_utms");
-          if (saved) {
-            const savedParams = new URLSearchParams(saved);
-            savedParams.forEach((value, key) => {
-              targetUrl.searchParams.set(key, value);
-            });
-          }
-        } catch (e) {}
-      }
+      const utmParams = getAllUtms();
+      utmParams.forEach((value, key) => {
+        targetUrl.searchParams.set(key, value);
+      });
 
       return targetUrl.toString();
     } catch (e) {
@@ -109,8 +146,13 @@ export default function App() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setBasicCheckoutUrl(appendUtms(HOTMART_LINK_BASIC));
-      setCompleteCheckoutUrl(appendUtms(HOTMART_LINK_COMPLETE));
+      const updateUrls = () => {
+        setBasicCheckoutUrl(appendUtms(HOTMART_LINK_BASIC));
+        setCompleteCheckoutUrl(appendUtms(HOTMART_LINK_COMPLETE));
+      };
+      updateUrls();
+      window.addEventListener("popstate", updateUrls);
+      return () => window.removeEventListener("popstate", updateUrls);
     }
   }, []);
 
