@@ -64,34 +64,7 @@ const HOTMART_LINK_BASIC = "https://pay.hotmart.com/C106096630V?checkoutMode=10"
 const HOTMART_LINK_COMPLETE = "https://pay.hotmart.com/J106610959I?checkoutMode=10";
 
 export default function App() {
-  const [basicCheckoutUrl, setBasicCheckoutUrl] = useState(HOTMART_LINK_BASIC);
-  const [completeCheckoutUrl, setCompleteCheckoutUrl] = useState(HOTMART_LINK_COMPLETE);
   const [activeModal, setActiveModal] = useState<"privacidade" | "termos" | "contacto" | null>(null);
-
-  const getCapturedUtms = (): URLSearchParams => {
-    const currentParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
-    
-    // Se a URL atual tem parâmetros (ex: utm_source, utm_medium, src, etc), guarda no storage
-    if (typeof window !== "undefined" && currentParams.toString().length > 0) {
-      try {
-        sessionStorage.setItem("captured_utms", currentParams.toString());
-        localStorage.setItem("captured_utms", currentParams.toString());
-      } catch (e) {}
-      return currentParams;
-    }
-
-    // Se a URL atual NÃO tem parâmetros, recupera as UTMs guardadas anteriormente
-    if (typeof window !== "undefined") {
-      try {
-        const saved = sessionStorage.getItem("captured_utms") || localStorage.getItem("captured_utms");
-        if (saved) {
-          return new URLSearchParams(saved);
-        }
-      } catch (e) {}
-    }
-
-    return currentParams;
-  };
 
   const appendUtms = (baseUrl: string) => {
     if (typeof window === "undefined") return baseUrl;
@@ -100,15 +73,39 @@ export default function App() {
       // Garante que checkoutMode=10 permanece presente para manter os banners
       targetUrl.searchParams.set("checkoutMode", "10");
 
-      const utmParams = getCapturedUtms();
-      utmParams.forEach((value, key) => {
-        targetUrl.searchParams.set(key, value);
-      });
+      // Extrai todos os parâmetros da URL atual (window.location.search)
+      const currentSearch = window.location.search;
+      if (currentSearch && currentSearch.length > 1) {
+        const searchParams = new URLSearchParams(currentSearch);
+        searchParams.forEach((value, key) => {
+          targetUrl.searchParams.set(key, value);
+        });
+        // Guarda no storage para persistência
+        try {
+          sessionStorage.setItem("captured_utms", searchParams.toString());
+          localStorage.setItem("captured_utms", searchParams.toString());
+        } catch (e) {}
+      } else {
+        // Fallback para UTMs capturadas previamente se window.location.search estiver vazio
+        try {
+          const saved = sessionStorage.getItem("captured_utms") || localStorage.getItem("captured_utms");
+          if (saved) {
+            const savedParams = new URLSearchParams(saved);
+            savedParams.forEach((value, key) => {
+              targetUrl.searchParams.set(key, value);
+            });
+          }
+        } catch (e) {}
+      }
+
       return targetUrl.toString();
     } catch (e) {
       return baseUrl;
     }
   };
+
+  const [basicCheckoutUrl, setBasicCheckoutUrl] = useState(() => appendUtms(HOTMART_LINK_BASIC));
+  const [completeCheckoutUrl, setCompleteCheckoutUrl] = useState(() => appendUtms(HOTMART_LINK_COMPLETE));
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -118,15 +115,10 @@ export default function App() {
   }, []);
 
   const handleCheckoutClick = (
-    e: React.MouseEvent<HTMLAnchorElement>,
-    baseUrl: string,
     planName: string,
     price: number
   ) => {
     if (typeof window !== "undefined") {
-      // Garante que a URL final contém todas as UTMs do momento e o checkoutMode=10
-      const finalUrl = appendUtms(baseUrl);
-
       // Disparar evento InitiateCheckout (IC) nos píxeis de rastreio (UTMify, Meta Pixel, Google Analytics)
       try {
         if (typeof (window as any).utmify === "function") {
@@ -140,12 +132,6 @@ export default function App() {
         }
       } catch (e) {
         // Ignora erros genéricos de script
-      }
-
-      // Redirecionamento na MESMA GUIA (mesma janela)
-      if (finalUrl) {
-        e.preventDefault();
-        window.location.href = finalUrl;
       }
     }
   };
@@ -921,7 +907,7 @@ export default function App() {
                 <a 
                   href={basicCheckoutUrl} 
                   target="_self"
-                  onClick={(e) => handleCheckoutClick(e, basicCheckoutUrl, 'Plano Básico', 7.90)}
+                  onClick={() => handleCheckoutClick('Plano Básico', 7.90)}
                   className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white px-6 py-4 text-sm sm:text-base font-black uppercase tracking-wider transition-all duration-300 shadow-md cursor-pointer"
                   id="btn-plano-basico"
                 >
@@ -985,7 +971,7 @@ export default function App() {
                 <a 
                   href={completeCheckoutUrl} 
                   target="_self"
-                  onClick={(e) => handleCheckoutClick(e, completeCheckoutUrl, 'Plano Completo', 14.90)}
+                  onClick={() => handleCheckoutClick('Plano Completo', 14.90)}
                   className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#28a745] hover:bg-[#218838] text-white px-6 py-4 text-sm sm:text-base font-black uppercase tracking-wider transition-all duration-300 shadow-md shadow-emerald-950/30 cursor-pointer"
                   id="btn-plano-completo"
                 >
