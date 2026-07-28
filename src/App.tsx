@@ -75,7 +75,9 @@ export default function App() {
         const cleanSearch = searchStr.startsWith("?") ? searchStr : "?" + searchStr;
         const params = new URLSearchParams(cleanSearch);
         params.forEach((val, key) => {
-          combined.set(key, val);
+          if (val && val.trim() !== "") {
+            combined.set(key, val);
+          }
         });
       } catch (e) {}
     };
@@ -130,7 +132,9 @@ export default function App() {
 
       const utmParams = getAllUtms();
       utmParams.forEach((value, key) => {
-        targetUrl.searchParams.set(key, value);
+        if (value && value.trim() !== "") {
+          targetUrl.searchParams.set(key, value);
+        }
       });
 
       return targetUrl.toString();
@@ -160,9 +164,10 @@ export default function App() {
     planName: string,
     price: number
   ) => {
-    // Garante que o atributo href do link tem a URL mais recente com todas as UTMs
+    e.preventDefault();
+
+    // Garante que a URL é gerada no exato momento do clique com todas as UTMs
     const finalUrl = appendUtms(baseUrl);
-    e.currentTarget.href = finalUrl;
 
     if (typeof window !== "undefined") {
       // Disparar evento InitiateCheckout (IC) nos píxeis de rastreio (UTMify, Meta Pixel, Google Analytics)
@@ -177,7 +182,22 @@ export default function App() {
           (window as any).gtag("event", "begin_checkout", { items: [{ item_name: planName, price: price }], value: price, currency: "EUR" });
         }
       } catch (err) {
-        // Ignora erros de script de terceiros
+        // Ignora erros de scripts de terceiros
+      }
+
+      // Redirecionamento garantido na mesma janela ou rompendo o iframe quando permitido
+      try {
+        if (window.self !== window.top) {
+          try {
+            window.top!.location.href = finalUrl;
+          } catch (err) {
+            window.location.href = finalUrl;
+          }
+        } else {
+          window.location.href = finalUrl;
+        }
+      } catch (err) {
+        window.location.href = finalUrl;
       }
     }
   };
